@@ -21,8 +21,9 @@ Lydos. What exists today is:
   by anyone from this repository alone (see [test/TEST_RESULTS.md](test/TEST_RESULTS.md)).
 - A passive, **receive-only** ESPHome firmware design around that decoder —
   structurally incapable of transmitting anything onto the UART bus (see
-  [PROTOCOL.md](PROTOCOL.md) §4 for how "receive-only" is verified, not just
-  claimed).
+  [BUILDING.md](BUILDING.md)'s "Verify the receive-only guarantee yourself"
+  section for how this is checked against the actual resolved build config,
+  not just claimed).
 - A real, reproducible build: compiles cleanly against a pinned ESPHome
   version (see [BUILDING.md](BUILDING.md)).
 - A documented, honest list of exactly what is still unknown and what has to

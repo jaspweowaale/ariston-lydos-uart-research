@@ -80,8 +80,11 @@ anything behind "trust us."
 `0x0000` (within the `0x0000`–`0x0005` range) reset that unit's main MCU and
 lost its clock setting. Any register scan should start at `0x0010` or above.
 This project's own firmware never issues read/scan commands at all (it's
-receive-only, see §4 below) but this is important context if you ever
-experiment with an active/write-capable tool against this protocol family.
+receive-only — see [BUILDING.md](BUILDING.md)'s "Verify the receive-only
+guarantee yourself" section for how that's checked against the actual
+compiled build, not just the source YAML) but this is important context if
+you ever experiment with an active/write-capable tool against this protocol
+family.
 
 ## 5. The CN6 connector — unresolved discrepancy, read before assuming anything
 
@@ -115,6 +118,15 @@ Do not treat the Velis Evo's pinout as a wiring instruction for a Lydos. See
 - The Lydos's CN6 connector description and claimed UART parameters
   originate from unverified comments on a public GitHub issue thread for an
   existing Ariston Home Assistant cloud integration.
+- One specific example frame used in this project's own test suite (a
+  duplicate-detection check, address `0x2D79`, value 69.0°C) —
+  `C3 41 33 04 79 2D B2 02 95` — is forum user **DeDaMrAz**'s own
+  already-public, self-published illustrative example from the Elektroda
+  thread above, reused here with attribution because the original poster
+  published this exact byte sequence themselves as a public example, which
+  this project treats as a different provenance tier from the same
+  contributor's bulk private capture session (not included — see
+  [test/README.md](test/README.md)).
 
 No account, login, or access-restricted material was used to obtain any of
 the above — everything cited here is public, attributed, and independently
