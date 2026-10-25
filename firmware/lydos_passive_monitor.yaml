@@ -1,0 +1,171 @@
+# Ariston Lydos -- PASSIVE, READ-ONLY CN6 UART monitor.
+#
+# NOT TESTED AGAINST REAL HARDWARE. DO NOT CONNECT TO THE REAL HEATER YET.
+# BUILD-VERIFIED (2026-10-25) against a real, isolated ESPHome 2026.6.5 install
+# against a real, isolated development install -- "esphome compile" succeeds end-to-end for the esp32-s3-devkitc-1
+# target (firmware.bin SHA-256 156ef943c999255860b8b5437fb6f42673d2a4dbcb0d00c30009a1e01d5a2a76,
+# see ../BUILDING.md for exact commands/versions/output). The resolved
+# config was directly inspected and confirmed to contain no tx_pin on either uart
+# bus and no polling/interval/write logic anywhere. This proves the CODE compiles
+# and is structurally passive -- it does NOT prove it decodes real Lydos traffic,
+# because no real Lydos capture exists yet (separate, unresolved gap).
+# The decode/correlation LOGIC this config wires up is ALSO independently compiled
+# and tested standalone -- see test/TEST_RESULTS.md (19/19 passed against a fully
+# synthetic, fabricated dataset shipped in this repo; 9/9 passed historically
+# against real reference-product data not included here, see test/README.md).
+#
+# Complete, in order, before any physical connection:
+#   1. De-energized visual inspection -- ../HARDWARE_VALIDATION_CHECKLIST.md
+#   2. Electrical-isolation verification -- ../SAFETY.md S2
+#   3. Real-capture baud/parity confirmation against an actual Lydos
+# See docs/INSTALLATION_PREREQUISITES.md and ../BUILDING.md for the full list.
+#
+# ARCHITECTURE: two independent, RECEIVE-ONLY uart buses. Neither has a
+# tx_pin. This device never transmits anything onto CN6 -- it only listens
+# to the existing factory gateway's own ongoing conversation with the main
+# MCU. This is what makes coexistence with the existing, already-installed
+# Wi-Fi gateway possible (see docs/OUTSTANDING_QUESTIONS.md for the
+# electrical reasoning and its limits).
+
+esphome:
+  name: lydos-passive-monitor
+  friendly_name: "Lydos CN6 Passive Monitor (EXPERIMENTAL)"
+
+esp32:
+  # ESP32-S3 chosen for this RX-only two-stream design -- re-justified from
+  # scratch for this simpler use case, NOT copied from the old bidirectional
+  # draft's ESP32-C5 choice. See docs/HARDWARE_BOM.md S1 for why.
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+# --- Two independent, receive-only UART buses -----------------------------
+# No tx_pin is set on EITHER bus. This is deliberate and structural, not an
+# oversight: this device has no transmit path to CN6 at all.
+#
+# Pin mapping is UNCONFIRMED for our Lydos specifically -- GPIOs below are
+# placeholders pending the physical inspection in ../HARDWARE_VALIDATION_CHECKLIST.md.
+# Baud/parity: 9600/8N1 is now confirmed on TWO real, unrelated Ariston
+# products (Velis 80 Wi-Fi, Velis Evo Plus 100 EU) vs. ONE uncorroborated
+# forum-prose claim of 19200/even for the Lydos specifically -- try 9600/8N1
+# first on a real capture; fall back to the commented block only if that
+# decodes to garbage.
+uart:
+  - id: uart_gateway_request      # taps the wire carrying the EXISTING gateway's own commands to the main MCU
+    rx_pin: GPIO4                 # UNCONFIRMED pin -- re-check against real CN6 pinout once photographed
+    baud_rate: 9600
+    # parity: NONE               # default; matches Velis 80 + Velis Evo
+    # --- FALLBACK ONLY, if 9600/8N1 decodes to garbage on a real capture ---
+    # baud_rate: 19200
+    # parity: EVEN               # per Geert2991's uncorroborated GH#433 prose, never byte-verified
+
+  - id: uart_mcu_response          # taps the wire carrying the main MCU's replies back to the gateway
+    rx_pin: GPIO5                  # UNCONFIRMED pin, same caveat
+    baud_rate: 9600
+    # parity: NONE
+
+ariston_passive:
+  id: ariston_monitor
+  request_uart_id: uart_gateway_request
+  response_uart_id: uart_mcu_response
+
+# --- Temperature-class entities (CONFIRMED / MATCHED_TEMP tiers) ----------
+# Entity IDs deliberately prefixed "lydos_cn6_" and distinct from anything
+# the existing cloud-based `fustom` HA integration already exposes -- see
+# docs/HA_ENTITY_MAPPING.md S4 "non-collision" requirement.
+sensor:
+  - platform: ariston_passive
+    register: 0x2D79
+    id: lydos_cn6_set_temperature
+    name: "Lydos CN6 Set Temperature"
+  - platform: ariston_passive
+    register: 0x9E71
+    id: lydos_cn6_set_temperature_alt
+    name: "Lydos CN6 Set Temperature (alt address, diagnostic)"
+    entity_category: diagnostic
+  - platform: ariston_passive
+    register: 0x9E6E
+    id: lydos_cn6_displayed_temperature
+    name: "Lydos CN6 Displayed Temperature"
+  - platform: ariston_passive
+    register: 0x1060
+    id: lydos_cn6_tank_temp_avg
+    name: "Lydos CN6 Tank Temperature Avg (experimental)"
+    entity_category: diagnostic
+  - platform: ariston_passive
+    register: 0x1368
+    id: lydos_cn6_tank_temp_r_bottom
+    name: "Lydos CN6 Tank Temp Right Bottom (experimental)"
+    entity_category: diagnostic
+  - platform: ariston_passive
+    register: 0x1369
+    id: lydos_cn6_tank_temp_r_top
+    name: "Lydos CN6 Tank Temp Right Top (experimental)"
+    entity_category: diagnostic
+  - platform: ariston_passive
+    register: 0x136A
+    id: lydos_cn6_tank_temp_l_bottom
+    name: "Lydos CN6 Tank Temp Left Bottom (experimental)"
+    entity_category: diagnostic
+  - platform: ariston_passive
+    register: 0x136B
+    id: lydos_cn6_tank_temp_l_top
+    name: "Lydos CN6 Tank Temp Left Top (experimental)"
+    entity_category: diagnostic
+  - platform: ariston_passive
+    register: 0x2D60
+    id: lydos_cn6_max_temperature
+    name: "Lydos CN6 Max Temperature Limit (experimental)"
+    entity_category: diagnostic
+
+# --- Raw/enum-class entities (MATCHED_ENUM / UNCONFIRMED tiers) ----------
+# Raw hex bytes only -- see text_sensor.py header. Do not treat these as
+# authoritative on/off state until byte semantics are independently decoded.
+text_sensor:
+  - platform: ariston_passive
+    register: 0x2105
+    id: lydos_cn6_power_raw
+    name: "Lydos CN6 Power Register (raw, unconfirmed semantics)"
+  - platform: ariston_passive
+    register: 0x2106
+    id: lydos_cn6_eco_raw
+    name: "Lydos CN6 ECO Register (raw, unconfirmed semantics)"
+  - platform: ariston_passive
+    register: 0x210A
+    id: lydos_cn6_antilegionella_raw
+    name: "Lydos CN6 Anti-legionella Register (raw, unconfirmed semantics)"
+  - platform: ariston_passive
+    register: 0x27DD
+    id: lydos_cn6_mode_raw
+    name: "Lydos CN6 Mode Register (raw, unconfirmed semantics)"
+  - platform: ariston_passive
+    register: 0x4BC4
+    id: lydos_cn6_heating_raw
+    name: "Lydos CN6 Heating Register (raw, EXPERIMENTAL -- Evo-only)"
+  - platform: ariston_passive
+    register: 0x4BD3
+    id: lydos_cn6_antilegionella_cycle_raw
+    name: "Lydos CN6 Anti-legionella Cycle Register (raw, EXPERIMENTAL -- Evo-only)"
+  - platform: ariston_passive
+    register: 0x475E
+    id: lydos_cn6_time_to_temp_raw
+    name: "Lydos CN6 Time-to-Setpoint Register (raw, EXPERIMENTAL -- Evo-only)"
