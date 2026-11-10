@@ -117,14 +117,31 @@ the internals of a mains-powered appliance carries real electrical risk —
 read [SAFETY.md](SAFETY.md) before doing anything physical. Nothing in this
 repository has been tested against a real Ariston Lydos.
 
-## Support Independent Development
+## Get Involved
 
-This project is independently researched and maintained.
+This project welcomes contributions of time, technical skills, testing,
+documentation, research, and ideas. Nothing here has been tested against a real
+Ariston Lydos yet, so the single most valuable contribution is a hardware
+validation report from someone who owns one.
 
-If you find the work useful, you can support continued research, testing,
-documentation, hosting, and development through Ko-fi.
+The routes in:
 
-**Support:** https://ko-fi.com/jasperwaale
+* **Hardware validation** — work through
+  [`HARDWARE_VALIDATION_CHECKLIST.md`](HARDWARE_VALIDATION_CHECKLIST.md) and file
+  a hardware validation report from the issue templates. Read
+  [`SAFETY.md`](SAFETY.md) first: this involves a mains-powered appliance and
+  real electrical risk.
+* **Issues and pull requests here on GitHub** — see
+  [`CONTRIBUTING.md`](CONTRIBUTING.md) for scope and licensing.
+* **Protocol knowledge** — corrections or additions to
+  [`PROTOCOL.md`](PROTOCOL.md), with sources.
+* **Other ways to take part**, including non-technical ones: https://holisticdata.com/get-involved
+
+Voluntary financial contributions are also welcome, to help cover ongoing
+project costs — hosting, development, research and maintenance. They are never
+required in order to take part, and everything above matters more.
+
+**Ko-fi:** https://ko-fi.com/jasperwaale
 
 Contributions are voluntary and do not influence technical findings or project
 decisions.
